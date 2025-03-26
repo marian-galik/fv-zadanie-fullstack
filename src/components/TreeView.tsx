@@ -5,6 +5,9 @@ import { TreeNode } from "@/types/tree";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HighlightText } from "@/components/tree-view/HighlightText";
+import { useDebounce } from "@/hooks/useDebounce";
+
+const SEARCH_MIN_LENGTH = 3;
 
 /**
  * Recursively checks if a node or any of its children match the search term
@@ -17,7 +20,7 @@ function getNodeSearchStatus(
   hasMatchInChildren: boolean;
 } {
   // Only perform search if search term has at least 3 characters
-  const shouldSearch = searchTerm.length >= 3;
+  const shouldSearch = searchTerm.length >= SEARCH_MIN_LENGTH;
 
   // Direct match on current node
   const matchesSearch =
@@ -67,7 +70,7 @@ const TreeViewItem = ({
   const hasChildren = node.children && node.children.length > 0;
 
   // Only perform search if search term has at least 3 characters
-  const shouldSearch = searchTerm.length >= 3;
+  const shouldSearch = searchTerm.length >= SEARCH_MIN_LENGTH;
 
   // Determine if this node or its children match the search
   const { matchesSearch, hasMatchInChildren } = useMemo(
@@ -148,17 +151,23 @@ export function TreeView({
   data: TreeNode;
   searchTerm?: string;
 }) {
-  const isSearchMode = searchTerm && searchTerm.length >= 3;
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const isSearchMode =
+    debouncedSearchTerm && debouncedSearchTerm.length >= SEARCH_MIN_LENGTH;
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4 border rounded-lg bg-background">
       {isSearchMode && (
         <div className="mb-2 text-sm text-muted-foreground">
           Showing search results for:{" "}
-          <span className="font-medium">{searchTerm}</span>
+          <span className="font-medium">{debouncedSearchTerm}</span>
         </div>
       )}
-      <TreeViewItem node={data} searchTerm={searchTerm} isExpanded={true} />
+      <TreeViewItem
+        node={data}
+        searchTerm={debouncedSearchTerm}
+        isExpanded={true}
+      />
     </div>
   );
 }
