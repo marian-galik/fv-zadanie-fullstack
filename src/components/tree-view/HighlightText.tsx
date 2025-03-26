@@ -1,16 +1,19 @@
-import React from "react";
-
 interface HighlightTextProps {
   text: string;
   searchTerm?: string;
+  shouldSearch?: boolean;
 }
 
 /**
  * Component that highlights portions of text that match a search term
  */
-export function HighlightText({ text, searchTerm = "" }: HighlightTextProps) {
+export function HighlightText({
+  text,
+  searchTerm = "",
+  shouldSearch = false,
+}: HighlightTextProps) {
   // If no search term or too short, just return the text
-  if (!searchTerm || searchTerm.length < 3) {
+  if (!searchTerm || !shouldSearch) {
     return <>{text}</>;
   }
 
@@ -28,7 +31,7 @@ export function HighlightText({ text, searchTerm = "" }: HighlightTextProps) {
         return isMatch ? (
           <span
             key={i}
-            className="bg-yellow-100 dark:bg-yellow-900/30 font-medium"
+            className="bg-yellow-100 dark:bg-yellow-900/90 font-medium"
           >
             {part}
           </span>

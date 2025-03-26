@@ -1,10 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { TreeNode } from "@/types/tree";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HighlightText } from "@/components/tree-view/HighlightText";
+
+/**
+ * Recursively checks if a node or any of its children match the search term
+ */
+function getNodeSearchStatus(
+  node: TreeNode,
+  searchTerm: string
+): {
+  matchesSearch: boolean;
+  hasMatchInChildren: boolean;
+} {
+  // Only perform search if search term has at least 3 characters
+  const shouldSearch = searchTerm.length >= 3;
+
+  // Direct match on current node
+  const matchesSearch =
+    shouldSearch && node.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+  // Check children
+  let hasMatchInChildren = false;
+
+  if (node.children && node.children.length > 0) {
+    for (const child of node.children) {
+      const childStatus = getNodeSearchStatus(child, searchTerm);
+      if (childStatus.matchesSearch || childStatus.hasMatchInChildren) {
+        hasMatchInChildren = true;
+        break;
+      }
+    }
+  }
+
+  return { matchesSearch, hasMatchInChildren };
+}
 
 interface TreeViewItemProps {
   /** Tree node data to render */
@@ -36,12 +69,32 @@ const TreeViewItem = ({
   // Only perform search if search term has at least 3 characters
   const shouldSearch = searchTerm.length >= 3;
 
+  // Determine if this node or its children match the search
+  const { matchesSearch, hasMatchInChildren } = useMemo(
+    () => getNodeSearchStatus(node, searchTerm),
+    [node, searchTerm]
+  );
+
+  // Auto-expand nodes with matching children during search
+  useEffect(() => {
+    if (shouldSearch && hasMatchInChildren) {
+      setIsExpanded(true);
+    } else if (!shouldSearch) {
+      setIsExpanded(defaultExpanded);
+    }
+  }, [searchTerm, hasMatchInChildren, shouldSearch, defaultExpanded]);
+
+  // In search mode, only render nodes that match or have matching children
+  if (shouldSearch && !matchesSearch && !hasMatchInChildren) {
+    return null;
+  }
+
   return (
     <div className="select-none">
       <div
         className={cn(
           "flex items-center gap-1 py-1 px-2 hover:bg-accent rounded-lg cursor-pointer",
-          level > 0 && "ml-6"
+          shouldSearch && matchesSearch && "bg-accent/50"
         )}
         onClick={() => hasChildren && setIsExpanded(!isExpanded)}
       >
@@ -56,6 +109,7 @@ const TreeViewItem = ({
         )}
         <span className="flex-1">
           <HighlightText
+            shouldSearch={shouldSearch}
             text={node.name}
             searchTerm={shouldSearch ? searchTerm : undefined}
           />
@@ -64,7 +118,7 @@ const TreeViewItem = ({
       </div>
 
       {isExpanded && hasChildren && (
-        <div className="mt-1">
+        <div className="mt-1 ml-6">
           {node.children?.map((child, index) => (
             <TreeViewItem
               key={`${child.name}-${index}`}
@@ -94,8 +148,16 @@ export function TreeView({
   data: TreeNode;
   searchTerm?: string;
 }) {
+  const isSearchMode = searchTerm && searchTerm.length >= 3;
+
   return (
     <div className="w-full max-w-2xl mx-auto p-4 border rounded-lg bg-background">
+      {isSearchMode && (
+        <div className="mb-2 text-sm text-muted-foreground">
+          Showing search results for:{" "}
+          <span className="font-medium">{searchTerm}</span>
+        </div>
+      )}
       <TreeViewItem node={data} searchTerm={searchTerm} isExpanded={true} />
     </div>
   );
